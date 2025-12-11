@@ -20,7 +20,7 @@ function getCurrentEngine() {
 }
 
 // 创建分屏面板
-function createSplitPanel(engines, query) {
+function createSplitPanel(engines, query, defaultEngineIndex) {
   // 过滤掉当前搜索引擎
   const currentEngine = getCurrentEngine();
   const otherEngines = engines.filter(e => e.pattern !== currentEngine?.pattern);
@@ -54,6 +54,22 @@ function createSplitPanel(engines, query) {
     select.appendChild(opt);
   });
 
+  // 找到默认引擎在 otherEngines 中的索引
+  const defaultEngine = engines[defaultEngineIndex];
+  let initialIndex = 0;
+  if (defaultEngine) {
+    const pattern = defaultEngine.pattern || defaultEngine.url;
+    const currentPattern = currentEngine?.pattern || currentEngine?.url;
+    if (pattern !== currentPattern) {
+      const idx = otherEngines.findIndex(e => {
+        const ePattern = e.pattern || e.url;
+        return ePattern === pattern;
+      });
+      if (idx !== -1) initialIndex = idx;
+    }
+  }
+  select.value = initialIndex;
+
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '✕';
   closeBtn.addEventListener('click', closeSplitPanel);
@@ -64,7 +80,7 @@ function createSplitPanel(engines, query) {
   // iframe
   const iframe = document.createElement('iframe');
   iframe.className = 'split-search-frame';
-  iframe.src = otherEngines[0].url + encodeURIComponent(query);
+  iframe.src = otherEngines[initialIndex].url + encodeURIComponent(query);
 
   // 切换搜索引擎
   select.addEventListener('change', () => {
@@ -111,9 +127,10 @@ async function openSplitPanel() {
   const query = extractQuery();
   if (!query) return;
 
-  const result = await chrome.storage.sync.get(['searchEngines']);
+  const result = await chrome.storage.sync.get(['searchEngines', 'defaultEngineIndex']);
   const engines = result.searchEngines || defaultEngines;
-  createSplitPanel(engines, query);
+  const defaultEngineIndex = result.defaultEngineIndex || 0;
+  createSplitPanel(engines, query, defaultEngineIndex);
 
   chrome.storage.sync.set({ splitActive: true });
 }
