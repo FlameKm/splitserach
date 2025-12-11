@@ -30,28 +30,6 @@ async function saveSettings() {
   await chrome.storage.sync.set({ autoOpen, defaultEngineIndex });
 }
 
-// 打开分屏 - 在页面中创建分屏
-async function toggleSplitPage() {
-  // 获取当前活动的标签页
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab) {
-    // 发送消息给content script来切换分屏
-    chrome.tabs.sendMessage(tab.id, { action: 'toggleSplit' });
-  }
-}
-
-// 打开侧边栏
-async function openSidePanel() {
-  // 获取当前活动的标签页
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab) {
-    await chrome.sidePanel.open({ tabId: tab.id });
-  }
-}
-
-// 打开分屏按钮 - 使用页面内分屏
-document.getElementById('openSplit').addEventListener('click', toggleSplitPage);
-
 // 自动打开开关
 document.getElementById('autoOpen').addEventListener('change', saveSettings);
 
