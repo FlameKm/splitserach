@@ -1,14 +1,20 @@
-// 搜索引擎 URL 匹配模式
-const searchPatterns = [
-  /^https:\/\/www\.google\.com\/search/,
-  /^https:\/\/www\.baidu\.com\/s/,
-  /^https:\/\/www\.bing\.com\/search/,
-  /^https:\/\/duckduckgo\.com\/\?q=/
-];
+// 检查 URL 是否匹配已启用的搜索引擎
+async function isEnabledSearchPage(url) {
+  const result = await chrome.storage.sync.get(['searchEngines']);
+  console.log('Split Search: 检查搜索引擎配置', result);
+  console.log('Split Search: 当前 URL', url);
+  const engines = result.searchEngines || [];
 
-// 检查是否是搜索结果页
-function isSearchPage(url) {
-  return searchPatterns.some(pattern => pattern.test(url));
+  const matched = engines.find(engine => {
+    if (!engine.enabled) return false;
+    const baseUrl = new URL(engine.url).origin + new URL(engine.url).pathname;
+    const isMatch = url.startsWith(baseUrl);
+    console.log(`Split Search: 检查 ${engine.name} (${baseUrl}): ${isMatch}`);
+    return isMatch;
+  });
+
+  console.log('Split Search: 匹配结果', matched);
+  return !!matched;
 }
 
 // 监听标签页更新，自动打开 Side Panel
@@ -18,7 +24,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const result = await chrome.storage.sync.get(['autoOpen']);
   if (!result.autoOpen) return;
 
-  if (isSearchPage(tab.url)) {
+  if (await isEnabledSearchPage(tab.url)) {
     chrome.sidePanel.open({ tabId });
   }
 });

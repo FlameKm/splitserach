@@ -149,10 +149,21 @@ async function init() {
     return;
   }
 
-  const result = await chrome.storage.sync.get(['autoOpen']);
+  const result = await chrome.storage.sync.get(['autoOpen', 'searchEngines']);
   console.log('Split Search: autoOpen =', result.autoOpen);
 
-  if (result.autoOpen) {
+  if (!result.autoOpen) return;
+
+  // 检查当前搜索引擎是否被启用
+  const currentEngine = getCurrentEngine();
+  const engines = result.searchEngines || defaultEngines;
+  const isEnabled = engines.some(e =>
+    (e.pattern || e.url).includes(currentEngine?.pattern) && e.enabled
+  );
+
+  console.log('Split Search: 当前引擎已启用 =', isEnabled);
+
+  if (isEnabled) {
     openSplitPanel();
   }
 }
