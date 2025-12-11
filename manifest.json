@@ -30,9 +30,13 @@
     {
       "matches": [
         "*://*.google.com/search*",
+        "*://*.google.com.hk/search*",
         "*://*.baidu.com/s*",
         "*://*.bing.com/search*",
-        "*://duckduckgo.com/*"
+        "*://cn.bing.com/search*",
+        "*://*.so.com/s*",
+        "*://*.sogou.com/web*",
+        "*://fanyi.sogou.com/*"
       ],
       "js": ["src/content/content.js"],
       "run_at": "document_end"

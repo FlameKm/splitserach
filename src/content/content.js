@@ -1,8 +1,11 @@
 const defaultEngines = [
-  { name: 'Google', url: 'https://www.google.com/search?igu=1&q=', pattern: 'google.com' },
+  { name: 'Google', url: 'https://www.google.com/search?q=', pattern: 'google.com' },
+  { name: 'Google.hk', url: 'https://www.google.com.hk/search?q=', pattern: 'google.com.hk' },
   { name: '百度', url: 'https://www.baidu.com/s?wd=', pattern: 'baidu.com' },
-  { name: '必应', url: 'https://www.bing.com/search?q=', pattern: 'bing.com' },
-  { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=', pattern: 'duckduckgo.com' }
+  { name: '必应', url: 'https://cn.bing.com/search?q=', pattern: 'bing.com' },
+  { name: '360', url: 'https://www.so.com/s?q=', pattern: 'so.com' },
+  { name: '搜狗', url: 'https://www.sogou.com/web?query=', pattern: 'sogou.com' },
+  { name: '翻译', url: 'https://fanyi.sogou.com/?keyword=', pattern: 'fanyi.sogou.com' }
 ];
 
 let isActive = false;
@@ -80,6 +83,7 @@ function createSplitPanel(engines, query, defaultEngineIndex) {
   // iframe
   const iframe = document.createElement('iframe');
   iframe.className = 'split-search-frame';
+  iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
   iframe.src = otherEngines[initialIndex].url + encodeURIComponent(query);
 
   // 切换搜索引擎
