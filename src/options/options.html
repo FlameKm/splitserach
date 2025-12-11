@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .engine-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    .engine-item input {
+      margin-right: 10px;
+    }
+    .engine-item input[type="text"] {
+      flex: 1;
+      padding: 5px;
+    }
+    button {
+      padding: 10px 15px;
+      margin: 10px 5px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>Split Search 设置</h2>
+
+  <h3>自动打开</h3>
+  <label>
+    <input type="checkbox" id="autoOpen">
+    进入搜索页面时自动打开分屏
+  </label>
+
+  <h3>搜索引擎</h3>
+  <div id="enginesContainer"></div>
+  <button id="addEngine">添加搜索引擎</button>
+  <button id="saveSettings">保存设置</button>
+  <script src="options.js"></script>
+</body>
+</html>
