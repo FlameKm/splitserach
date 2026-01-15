@@ -1,13 +1,3 @@
-const defaultEngines = [
-  { name: 'Google', url: 'https://www.google.com/search?q=', pattern: 'google.com' },
-  { name: 'Google.hk', url: 'https://www.google.com.hk/search?q=', pattern: 'google.com.hk' },
-  { name: '百度', url: 'https://www.baidu.com/s?wd=', pattern: 'baidu.com' },
-  { name: '必应', url: 'https://cn.bing.com/search?q=', pattern: 'bing.com' },
-  { name: '360', url: 'https://www.so.com/s?q=', pattern: 'so.com' },
-  { name: '搜狗', url: 'https://www.sogou.com/web?query=', pattern: 'sogou.com' },
-  { name: '翻译', url: 'https://fanyi.sogou.com/?keyword=', pattern: 'fanyi.sogou.com' }
-];
-
 let isActive = false;
 
 // 从当前 URL 提取搜索关键词
@@ -17,15 +7,17 @@ function extractQuery() {
 }
 
 // 获取当前页面所属的搜索引擎
-function getCurrentEngine() {
+async function getCurrentEngine() {
   const host = window.location.hostname;
-  return defaultEngines.find(e => host.includes(e.pattern));
+  const result = await chrome.storage.sync.get(['searchEngines']);
+  const engines = result.searchEngines || [];
+  return engines.find(e => host.includes(e.pattern));
 }
 
 // 创建分屏面板
-function createSplitPanel(engines, query, defaultEngineIndex) {
+async function createSplitPanel(engines, query, defaultEngineIndex) {
   // 过滤掉当前搜索引擎
-  const currentEngine = getCurrentEngine();
+  const currentEngine = await getCurrentEngine();
   const otherEngines = engines.filter(e => e.pattern !== currentEngine?.pattern);
   if (otherEngines.length === 0) return;
 
@@ -133,9 +125,9 @@ async function openSplitPanel() {
   if (!query) return;
 
   const result = await chrome.storage.sync.get(['searchEngines', 'defaultEngineIndex']);
-  const engines = result.searchEngines || defaultEngines;
+  const engines = result.searchEngines || [];
   const defaultEngineIndex = result.defaultEngineIndex || 0;
-  createSplitPanel(engines, query, defaultEngineIndex);
+  await createSplitPanel(engines, query, defaultEngineIndex);
 
   chrome.storage.sync.set({ splitActive: true });
 }
@@ -156,14 +148,17 @@ async function init() {
   if (!result.autoOpen) return;
 
   // 检查当前搜索引擎是否被启用
-  const currentEngine = getCurrentEngine();
-  const engines = result.searchEngines || defaultEngines;
-  const isEnabled = engines.some(e =>
-    (e.pattern || e.url).includes(currentEngine?.pattern) && e.enabled
-  );
+  const currentEngine = await getCurrentEngine();
+  console.log('Split Search: 当前搜索引擎:', currentEngine);
 
-  console.log('Split Search: 当前引擎已启用 =', isEnabled);
+  // const engines = result.searchEngines || [];
+  // const isEnabled = engines.some(e =>
+  //   (e.pattern || e.url).includes(currentEngine?.pattern) && e.enabled
+  // );
 
+  // console.log('Split Search: 当前引擎已启用 =', isEnabled);
+  // todo: 先不检查当前引擎是否启用，避免误判
+  const isEnabled = true;
   if (isEnabled) {
     openSplitPanel();
   }

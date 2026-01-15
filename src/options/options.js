@@ -1,13 +1,3 @@
-// 默认搜索引擎列表
-const defaultEngines = [
-  { name: 'Google', url: 'https://www.google.com/search?q=', enabled: true },
-  { name: '百度', url: 'https://www.baidu.com/s?wd=', enabled: true },
-  { name: '必应', url: 'https://cn.bing.com/search?q=', enabled: true },
-  { name: '360', url: 'https://www.so.com/s?q=', enabled: true },
-  { name: '搜狗', url: 'https://www.sogou.com/web?query=', enabled: true },
-  { name: '翻译', url: 'https://fanyi.sogou.com/?keyword=', enabled: false },
-  { name: '知乎', url: 'https://www.zhihu.com/search?q=', enabled: false }
-];
 
 // 加载搜索引擎配置
 function loadEngines() {
@@ -15,7 +5,7 @@ function loadEngines() {
   container.innerHTML = '';
 
   chrome.storage.sync.get(['searchEngines'], function (result) {
-    const engines = result.searchEngines || defaultEngines;
+    const engines = result.searchEngines || [];
 
     // 填充引擎列表
     engines.forEach((engine, index) => {
