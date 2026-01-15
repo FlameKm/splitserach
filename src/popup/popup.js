@@ -1,6 +1,6 @@
 // 加载设置
 async function loadSettings() {
-  const result = await chrome.storage.sync.get(['autoOpen', 'defaultEngineIndex', 'searchEngines']);
+  const result = await chrome.storage.sync.get(['autoOpen', 'engineIndex', 'searchEngines']);
 
   document.getElementById('autoOpen').checked = result.autoOpen || false;
 
@@ -13,14 +13,14 @@ async function loadSettings() {
     opt.textContent = e.name;
     select.appendChild(opt);
   });
-  select.value = result.defaultEngineIndex || 0;
+  select.value = result.engineIndex || 0;
 }
 
 // 保存设置
 async function saveSettings() {
   const autoOpen = document.getElementById('autoOpen').checked;
-  const defaultEngineIndex = parseInt(document.getElementById('defaultEngine').value);
-  await chrome.storage.sync.set({ autoOpen, defaultEngineIndex });
+  const engineIndex = parseInt(document.getElementById('defaultEngine').value);
+  await chrome.storage.sync.set({ autoOpen, engineIndex });
 }
 
 // 自动打开开关

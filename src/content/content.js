@@ -1,180 +1,151 @@
-let isActive = false;
+const extractQuery = (url) =>
+  ['q', 'wd', 'query']
+    .map(key => new URLSearchParams(url).get(key))
+    .find(Boolean) || '';
 
-// 从当前 URL 提取搜索关键词
-function extractQuery() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('q') || params.get('wd') || params.get('query') || '';
-}
+const findEngineByHost = (engines, host) =>
+  engines.find(e => host.includes(e.pattern));
 
-// 获取当前页面所属的搜索引擎
-async function getCurrentEngine() {
-  const host = window.location.hostname;
-  const result = await chrome.storage.sync.get(['searchEngines']);
-  const engines = result.searchEngines || [];
-  return engines.find(e => host.includes(e.pattern));
-}
+const filterByPattern = (pattern) => (engines) =>
+  engines.filter(e => e.pattern !== pattern);
 
-// 创建分屏面板
-async function createSplitPanel(engines, query, defaultEngineIndex) {
-  // 过滤掉当前搜索引擎
+const findInitialIndex = (defaultEngine, currentPattern) => (engines) =>
+  !defaultEngine || defaultEngine.pattern === currentPattern
+    ? 0
+    : Math.max(0, engines.findIndex(e => e.pattern === defaultEngine.pattern));
+
+const buildSearchUrl = (query) => (engine) =>
+  engine.url + encodeURIComponent(query);
+
+const getCurrentEngine = async () => {
+  const { searchEngines = [] } = await chrome.storage.sync.get(['searchEngines']);
+  return findEngineByHost(searchEngines, window.location.hostname);
+};
+
+const getFilteredEngines = async (engines, engineIndex) => {
   const currentEngine = await getCurrentEngine();
-  const otherEngines = engines.filter(e => e.pattern !== currentEngine?.pattern);
-  if (otherEngines.length === 0) return;
+  const filteredEngines = filterByPattern(currentEngine?.pattern)(engines);
+  const initialIndex = findInitialIndex(engines[engineIndex], currentEngine?.pattern)(filteredEngines);
+  return { filteredEngines, initialIndex };
+};
 
-  // 包装原始内容
-  const wrapper = document.createElement('div');
-  wrapper.className = 'split-search-container';
+const setProps = (el) => (props) => {
+  Object.entries(props)
+    .filter(([key]) => key !== 'children')
+    .forEach(([key, value]) => {
+      key === 'textContent' ? el.textContent = value : el[key] = value;
+    });
+  return el;
+};
 
-  const original = document.createElement('div');
-  original.className = 'split-search-original';
-  while (document.body.firstChild) {
-    original.appendChild(document.body.firstChild);
-  }
+const createElement = (tag) => (props = {}) =>
+  setProps(document.createElement(tag))(props);
 
-  // 创建分屏面板
-  const panel = document.createElement('div');
-  panel.className = 'split-search-panel';
-  panel.id = 'split-search-panel';
+const createOption = (index) => (engine) =>
+  createElement('option')({ value: index, textContent: engine.name });
 
-  // 头部：搜索引擎选择 + 关闭按钮
-  const header = document.createElement('div');
-  header.className = 'split-search-header';
+const createSelect = (engines, initialIndex) =>
+  engines
+    .map((e, i) => createOption(i)(e))
+    .reduce((select, opt) => (select.appendChild(opt), select),
+      Object.assign(createElement('select')({ id: 'split-search-select' }), { value: initialIndex }));
 
-  const select = document.createElement('select');
-  select.id = 'split-search-select';
-  otherEngines.forEach((e, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = e.name;
-    select.appendChild(opt);
+const createCloseButton = (onClick) =>
+  Object.assign(createElement('button')({ textContent: '✕' }), {
+    onclick: onClick
   });
 
-  // 找到默认引擎在 otherEngines 中的索引
-  const defaultEngine = engines[defaultEngineIndex];
-  let initialIndex = 0;
-  if (defaultEngine) {
-    const pattern = defaultEngine.pattern || defaultEngine.url;
-    const currentPattern = currentEngine?.pattern || currentEngine?.url;
-    if (pattern !== currentPattern) {
-      const idx = otherEngines.findIndex(e => {
-        const ePattern = e.pattern || e.url;
-        return ePattern === pattern;
-      });
-      if (idx !== -1) initialIndex = idx;
-    }
-  }
-  select.value = initialIndex;
+const createHeader = (engines, initialIndex, onClose) =>
+  [createSelect(engines, initialIndex), createCloseButton(onClose)]
+    .reduce((header, child) => (header.appendChild(child), header),
+      createElement('div')({ className: 'split-search-header' }));
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '✕';
-  closeBtn.addEventListener('click', closeSplitPanel);
-
-  header.appendChild(select);
-  header.appendChild(closeBtn);
-
-  // iframe
-  const iframe = document.createElement('iframe');
-  iframe.className = 'split-search-frame';
-  // iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
-  iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation';
-  iframe.src = otherEngines[initialIndex].url + encodeURIComponent(query);
-
-  // 切换搜索引擎
-  select.addEventListener('change', () => {
-    const idx = parseInt(select.value);
-    iframe.src = otherEngines[idx].url + encodeURIComponent(query);
+const createIframe = (url) =>
+  createElement('iframe')({
+    className: 'split-search-frame',
+    sandbox: 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation',
+    src: url
   });
 
-  panel.appendChild(header);
-  panel.appendChild(iframe);
+const createPanel = (engines, query, initialIndex) => {
+  const iframe = createIframe(buildSearchUrl(query)(engines[initialIndex]));
+  const header = createHeader(engines, initialIndex, closeSplitPanel);
 
-  wrapper.appendChild(original);
-  wrapper.appendChild(panel);
-  document.body.appendChild(wrapper);
+  header.querySelector('select').onchange = (e) =>
+    iframe.src = buildSearchUrl(query)(engines[parseInt(e.target.value)]);
 
-  // 注入CSS样式
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.type = 'text/css';
-  link.href = chrome.runtime.getURL('src/content/content.css');
-  document.head.appendChild(link);
+  return [header, iframe]
+    .reduce((panel, child) => (panel.appendChild(child), panel),
+      createElement('div')({ className: 'split-search-panel', id: 'split-search-panel' }));
+};
 
-  isActive = true;
-}
+const createWrapper = (engines, query, initialIndex) => {
+  const original = Array.from(document.body.childNodes)
+    .reduce((div, child) => (div.appendChild(child), div),
+      createElement('div')({ className: 'split-search-original' }));
 
-// 关闭分屏
-function closeSplitPanel() {
+  return [original, createPanel(engines, query, initialIndex)]
+    .reduce((wrapper, child) => (wrapper.appendChild(child), wrapper),
+      createElement('div')({ className: 'split-search-container' }));
+};
+
+const injectStyles = () =>
+  document.head.appendChild(
+    createElement('link')({
+      rel: 'stylesheet',
+      type: 'text/css',
+      href: chrome.runtime.getURL('src/content/content.css')
+    })
+  );
+
+const isSplitActive = () => !!document.querySelector('.split-search-container');
+
+const mountSplitPanel = (engines, query, initialIndex) =>
+  engines.length > 0 && (
+    document.body.appendChild(createWrapper(engines, query, initialIndex)),
+    injectStyles(),
+    chrome.storage.sync.set({ splitActive: true })
+  );
+
+const restoreOriginalContent = () => {
   const wrapper = document.querySelector('.split-search-container');
-  if (!wrapper) return;
+  wrapper && (
+    Array.from(wrapper.querySelector('.split-search-original').childNodes)
+      .forEach(child => document.body.appendChild(child)),
+    wrapper.remove()
+  );
+};
 
-  const original = wrapper.querySelector('.split-search-original');
-  while (original.firstChild) {
-    document.body.appendChild(original.firstChild);
-  }
-  wrapper.remove();
-  isActive = false;
+const closeSplitPanel = () => (
+  restoreOriginalContent(),
+  chrome.storage.sync.set({ splitActive: false })
+);
 
-  chrome.storage.sync.set({ splitActive: false });
-}
+const openSplitPanel = async () => {
+  if (isSplitActive()) return;
 
-// 打开分屏
-async function openSplitPanel() {
-  if (isActive) return;
-
-  const query = extractQuery();
+  const query = extractQuery(window.location.search);
   if (!query) return;
 
-  const result = await chrome.storage.sync.get(['searchEngines', 'defaultEngineIndex']);
-  const engines = result.searchEngines || [];
-  const defaultEngineIndex = result.defaultEngineIndex || 0;
-  await createSplitPanel(engines, query, defaultEngineIndex);
+  const { searchEngines = [], engineIndex = 0 } = await chrome.storage.sync.get(['searchEngines', 'engineIndex']);
+  const { filteredEngines, initialIndex } = await getFilteredEngines(searchEngines, engineIndex);
 
-  chrome.storage.sync.set({ splitActive: true });
-}
+  mountSplitPanel(filteredEngines, query, initialIndex);
+};
 
-// 初始化
-async function init() {
-  const query = extractQuery();
-  console.log('Split Search: 当前关键词:', query);
+const shouldAutoOpen = async () => {
+  const { autoOpen } = await chrome.storage.sync.get(['autoOpen']);
+  if (!autoOpen) return false;
 
-  if (!query) {
-    console.log('Split Search: 非搜索结果页，跳过');
-    return;
-  }
-
-  const result = await chrome.storage.sync.get(['autoOpen', 'searchEngines']);
-  console.log('Split Search: autoOpen =', result.autoOpen);
-
-  if (!result.autoOpen) return;
-
-  // 检查当前搜索引擎是否被启用
   const currentEngine = await getCurrentEngine();
-  console.log('Split Search: 当前搜索引擎:', currentEngine);
+  return currentEngine?.trigger ?? false;
+};
 
-  // const engines = result.searchEngines || [];
-  // const isEnabled = engines.some(e =>
-  //   (e.pattern || e.url).includes(currentEngine?.pattern) && e.enabled
-  // );
-
-  // console.log('Split Search: 当前引擎已启用 =', isEnabled);
-  // todo: 先不检查当前引擎是否启用，避免误判
-  const isEnabled = true;
-  if (isEnabled) {
+const init = async () => {
+  console.log('Split Search: content script 已加载');
+  if (await shouldAutoOpen()) {
     openSplitPanel();
   }
-}
+};
 
-// 监听来自 popup 的消息
-chrome.runtime.onMessage.addListener((msg) => {
-  console.log('Split Search: 收到消息', msg);
-  if (msg.action === 'toggleSplit') {
-    if (isActive) {
-      closeSplitPanel();
-    } else {
-      openSplitPanel();
-    }
-  }
-});
-
-console.log('Split Search: content script 已加载');
 init();

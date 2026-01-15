@@ -12,7 +12,7 @@ function loadEngines() {
       const div = document.createElement('div');
       div.className = 'engine-item';
       div.innerHTML = `
-        <input type="checkbox" class="engine-checkbox" id="enabled-${index}" ${engine.enabled ? 'checked' : ''}>
+        <input type="checkbox" class="engine-checkbox" id="trigger-${index}" ${engine.trigger ? 'checked' : ''} title="触发分屏，使用该搜索引擎时，自动进行分屏操作">
         <input type="text" id="name-${index}" value="${engine.name}" placeholder="搜索引擎名称">
         <input type="text" id="url-${index}" value="${engine.url}" placeholder="搜索引擎URL">
         <button class="btn-remove">删除</button>
@@ -33,7 +33,7 @@ function addEngine() {
   div.className = 'engine-item';
   const index = container.children.length;
   div.innerHTML = `
-    <input type="checkbox" class="engine-checkbox" id="enabled-${index}" checked>
+    <input type="checkbox" class="engine-checkbox" id="trigger-${index}" checked title="触发分屏">
     <input type="text" id="name-${index}" placeholder="搜索引擎名称">
     <input type="text" id="url-${index}" placeholder="搜索引擎URL" value="https://www.example.com/search?q=">
     <button class="btn-remove">删除</button>
@@ -60,17 +60,17 @@ function saveSettings() {
 
   const items = container.querySelectorAll('.engine-item');
   items.forEach((item, i) => {
-    const enabled = item.querySelector(`#enabled-${i}`)?.checked;
+    const trigger = item.querySelector(`#trigger-${i}`)?.checked;
     const name = item.querySelector(`#name-${i}`)?.value;
     const url = item.querySelector(`#url-${i}`)?.value;
     if (name && url) {
-      engines.push({ name, url, enabled });
+      engines.push({ name, url, trigger });
     }
   });
 
-  chrome.storage.sync.get(['defaultEngineIndex'], (result) => {
-    const defaultEngineIndex = result.defaultEngineIndex || 0;
-    chrome.storage.sync.set({ autoOpen, defaultEngineIndex, searchEngines: engines }, () => {
+  chrome.storage.sync.get(['engineIndex'], (result) => {
+    const engineIndex = result.engineIndex || 0;
+    chrome.storage.sync.set({ autoOpen, engineIndex, searchEngines: engines }, () => {
       alert('设置已保存！');
       loadAutoOpen();
       loadEngines();
