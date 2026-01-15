@@ -83,7 +83,8 @@ function createSplitPanel(engines, query, defaultEngineIndex) {
   // iframe
   const iframe = document.createElement('iframe');
   iframe.className = 'split-search-frame';
-  iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
+  // iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
+  iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation';
   iframe.src = otherEngines[initialIndex].url + encodeURIComponent(query);
 
   // 切换搜索引擎

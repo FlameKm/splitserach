@@ -7,7 +7,16 @@ async function isEnabledSearchPage(url) {
 
   const matched = engines.find(engine => {
     if (!engine.enabled) return false;
-    const baseUrl = new URL(engine.url).origin + new URL(engine.url).pathname;
+
+    let baseUrl;
+    try {
+      const parsed = new URL(engine.url);
+      baseUrl = parsed.origin + parsed.pathname;
+    } catch (error) {
+      console.warn('Split Search: 无效搜索引擎 URL，已跳过', engine);
+      return false;
+    }
+
     const isMatch = url.startsWith(baseUrl);
     console.log(`Split Search: 检查 ${engine.name} (${baseUrl}): ${isMatch}`);
     return isMatch;
@@ -23,6 +32,8 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   const result = await chrome.storage.sync.get(['autoOpen']);
   if (!result.autoOpen) return;
+
+  if (!tab.url) return;
 
   if (await isEnabledSearchPage(tab.url)) {
     chrome.sidePanel.open({ tabId });
