@@ -7,8 +7,7 @@
   "permissions": [
     "storage",
     "activeTab",
-    "tabs",
-    "sidePanel"
+    "tabs"
   ],
 
   "content_security_policy": {
@@ -46,10 +45,6 @@
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": "icon.png"
-  },
-
-  "side_panel": {
-    "default_path": "src/sidepanel/sidepanel.html"
   },
 
   "options_page": "src/options/options.html",
