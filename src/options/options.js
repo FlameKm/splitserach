@@ -63,8 +63,9 @@ function saveSettings() {
     const trigger = item.querySelector(`#trigger-${i}`)?.checked;
     const name = item.querySelector(`#name-${i}`)?.value;
     const url = item.querySelector(`#url-${i}`)?.value;
+    const pattern = url.match(/https?:\/\/([^/]+)/)?.[1].replace(/^www\./, '') || '';
     if (name && url) {
-      engines.push({ name, url, trigger });
+      engines.push({ name, url, pattern, trigger });
     }
   });
 

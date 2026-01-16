@@ -17,18 +17,6 @@ const findInitialIndex = (defaultEngine, currentPattern) => (engines) =>
 const buildSearchUrl = (query) => (engine) =>
   engine.url + encodeURIComponent(query);
 
-const getCurrentEngine = async () => {
-  const { searchEngines = [] } = await chrome.storage.sync.get(['searchEngines']);
-  return findEngineByHost(searchEngines, window.location.hostname);
-};
-
-const getFilteredEngines = async (engines, engineIndex) => {
-  const currentEngine = await getCurrentEngine();
-  const filteredEngines = filterByPattern(currentEngine?.pattern)(engines);
-  const initialIndex = findInitialIndex(engines[engineIndex], currentEngine?.pattern)(filteredEngines);
-  return { filteredEngines, initialIndex };
-};
-
 const setProps = (el) => (props) => {
   Object.entries(props)
     .filter(([key]) => key !== 'children')
@@ -67,24 +55,24 @@ const createIframe = (url) =>
     src: url
   });
 
-const createPanel = (engines, query, initialIndex) => {
-  const iframe = createIframe(buildSearchUrl(query)(engines[initialIndex]));
-  const header = createHeader(engines, initialIndex, closeSplitPanel);
+const createPanel = (engine, query) => {
+  const iframe = createIframe(buildSearchUrl(query)(engine));
+  const header = createHeader([engine], 0, closeSplitPanel);
 
   header.querySelector('select').onchange = (e) =>
-    iframe.src = buildSearchUrl(query)(engines[parseInt(e.target.value)]);
+    iframe.src = buildSearchUrl(query)([engine][parseInt(e.target.value)]);
 
   return [header, iframe]
     .reduce((panel, child) => (panel.appendChild(child), panel),
       createElement('div')({ className: 'split-search-panel', id: 'split-search-panel' }));
 };
 
-const createWrapper = (engines, query, initialIndex) => {
+const createWrapper = (engine, query) => {
   const original = Array.from(document.body.childNodes)
     .reduce((div, child) => (div.appendChild(child), div),
       createElement('div')({ className: 'split-search-original' }));
 
-  return [original, createPanel(engines, query, initialIndex)]
+  return [original, createPanel(engine, query)]
     .reduce((wrapper, child) => (wrapper.appendChild(child), wrapper),
       createElement('div')({ className: 'split-search-container' }));
 };
@@ -100,12 +88,12 @@ const injectStyles = () =>
 
 const isSplitActive = () => !!document.querySelector('.split-search-container');
 
-const mountSplitPanel = (engines, query, initialIndex) =>
-  engines.length > 0 && (
-    document.body.appendChild(createWrapper(engines, query, initialIndex)),
-    injectStyles(),
-    chrome.storage.sync.set({ splitActive: true })
-  );
+const mountSplitPanel = (engine, query) =>
+(
+  document.body.appendChild(createWrapper(engine, query)),
+  injectStyles(),
+  chrome.storage.sync.set({ splitActive: true })
+);
 
 const restoreOriginalContent = () => {
   const wrapper = document.querySelector('.split-search-container');
@@ -124,26 +112,34 @@ const closeSplitPanel = () => (
 const openSplitPanel = async () => {
   if (isSplitActive()) return;
 
+  console.log('Split Search: 打开分屏搜索面板');
   const query = extractQuery(window.location.search);
   if (!query) return;
 
   const { searchEngines = [], engineIndex = 0 } = await chrome.storage.sync.get(['searchEngines', 'engineIndex']);
-  const { filteredEngines, initialIndex } = await getFilteredEngines(searchEngines, engineIndex);
+  const splitEngine = searchEngines[engineIndex];
 
-  mountSplitPanel(filteredEngines, query, initialIndex);
+  if (window.location.hostname.includes(splitEngine.pattern)) {
+    console.log('Split Search: 当前搜索引擎即为分屏引擎，取消分屏操作');
+    return;
+  }
+
+  mountSplitPanel(splitEngine, query);
 };
 
 const shouldAutoOpen = async () => {
   const { autoOpen } = await chrome.storage.sync.get(['autoOpen']);
   if (!autoOpen) return false;
 
-  const currentEngine = await getCurrentEngine();
+  const { searchEngines = [] } = await chrome.storage.sync.get(['searchEngines']);
+  const currentEngine = searchEngines.find(engine => window.location.hostname.includes(engine.pattern));
   return currentEngine?.trigger ?? false;
 };
 
 const init = async () => {
   console.log('Split Search: content script 已加载');
   if (await shouldAutoOpen()) {
+    console.log('Split Search: 自动打开分屏搜索面板');
     openSplitPanel();
   }
 };
