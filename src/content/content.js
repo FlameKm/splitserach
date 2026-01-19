@@ -32,11 +32,14 @@ const createElement = (tag) => (props = {}) =>
 const createOption = (index) => (engine) =>
   createElement('option')({ value: index, textContent: engine.name });
 
-const createSelect = (engines, initialIndex) =>
-  engines
-    .map((e, i) => createOption(i)(e))
-    .reduce((select, opt) => (select.appendChild(opt), select),
-      Object.assign(createElement('select')({ id: 'split-search-select' }), { value: initialIndex }));
+const createSelect = (engines, initialIndex) => {
+  const select = createElement('select')({ id: 'split-search-select' });
+  engines.forEach((e, i) => {
+    select.appendChild(createOption(i)(e));
+  });
+  select.value = initialIndex;
+  return select;
+};
 
 const createCloseButton = (onClick) =>
   Object.assign(createElement('button')({ textContent: '✕' }), {
@@ -55,24 +58,24 @@ const createIframe = (url) =>
     src: url
   });
 
-const createPanel = (engine, query) => {
-  const iframe = createIframe(buildSearchUrl(query)(engine));
-  const header = createHeader([engine], 0, closeSplitPanel);
+const createPanel = (engines, currentEngineIndex, query) => {
+  const iframe = createIframe(buildSearchUrl(query)(engines[currentEngineIndex]));
+  const header = createHeader(engines, currentEngineIndex, closeSplitPanel);
 
   header.querySelector('select').onchange = (e) =>
-    iframe.src = buildSearchUrl(query)([engine][parseInt(e.target.value)]);
+    iframe.src = buildSearchUrl(query)(engines[parseInt(e.target.value)]);
 
   return [header, iframe]
     .reduce((panel, child) => (panel.appendChild(child), panel),
       createElement('div')({ className: 'split-search-panel', id: 'split-search-panel' }));
 };
 
-const createWrapper = (engine, query) => {
+const createWrapper = (engines, currentEngineIndex, query) => {
   const original = Array.from(document.body.childNodes)
     .reduce((div, child) => (div.appendChild(child), div),
       createElement('div')({ className: 'split-search-original' }));
 
-  return [original, createPanel(engine, query)]
+  return [original, createPanel(engines, currentEngineIndex, query)]
     .reduce((wrapper, child) => (wrapper.appendChild(child), wrapper),
       createElement('div')({ className: 'split-search-container' }));
 };
@@ -88,9 +91,9 @@ const injectStyles = () =>
 
 const isSplitActive = () => !!document.querySelector('.split-search-container');
 
-const mountSplitPanel = (engine, query) =>
+const mountSplitPanel = (engines, currentEngineIndex, query) =>
 (
-  document.body.appendChild(createWrapper(engine, query)),
+  document.body.appendChild(createWrapper(engines, currentEngineIndex, query)),
   injectStyles(),
   chrome.storage.sync.set({ splitActive: true })
 );
@@ -124,7 +127,7 @@ const openSplitPanel = async () => {
     return;
   }
 
-  mountSplitPanel(splitEngine, query);
+  mountSplitPanel(searchEngines, engineIndex, query);
 };
 
 const shouldAutoOpen = async () => {
