@@ -1,16 +1,23 @@
 .split-search-container {
   display: flex;
   height: 100vh;
-  overflow: hidden;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999999;
+  background: #fff;
 }
 
-.split-search-original {
-  flex: 1;
-  overflow: auto;
+.split-search-original-frame {
+  width: 50%;
+  height: 100%;
+  border: none;
 }
 
 .split-search-panel {
   width: 50%;
+  height: 100%;
   border-left: 2px solid #ddd;
   display: flex;
   flex-direction: column;

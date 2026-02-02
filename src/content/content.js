@@ -51,9 +51,9 @@ const createHeader = (engines, initialIndex, onClose) =>
     .reduce((header, child) => (header.appendChild(child), header),
       createElement('div')({ className: 'split-search-header' }));
 
-const createIframe = (url) =>
+const createIframe = (url, className = 'split-search-frame') =>
   createElement('iframe')({
-    className: 'split-search-frame',
+    className,
     sandbox: 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation',
     src: url
   });
@@ -70,12 +70,14 @@ const createPanel = (engines, currentEngineIndex, query) => {
       createElement('div')({ className: 'split-search-panel', id: 'split-search-panel' }));
 };
 
-const createWrapper = (engines, currentEngineIndex, query) => {
-  const original = Array.from(document.body.childNodes)
-    .reduce((div, child) => (div.appendChild(child), div),
-      createElement('div')({ className: 'split-search-original' }));
+const createOriginalFrame = () =>
+  createIframe(window.location.href, 'split-search-original-frame');
 
-  return [original, createPanel(engines, currentEngineIndex, query)]
+const createWrapper = (engines, currentEngineIndex, query) => {
+  const originalFrame = createOriginalFrame();
+  const panel = createPanel(engines, currentEngineIndex, query);
+
+  return [originalFrame, panel]
     .reduce((wrapper, child) => (wrapper.appendChild(child), wrapper),
       createElement('div')({ className: 'split-search-container' }));
 };
@@ -91,20 +93,39 @@ const injectStyles = () =>
 
 const isSplitActive = () => !!document.querySelector('.split-search-container');
 
-const mountSplitPanel = (engines, currentEngineIndex, query) =>
-(
-  document.body.appendChild(createWrapper(engines, currentEngineIndex, query)),
-  injectStyles(),
-  chrome.storage.sync.set({ splitActive: true })
-);
+const hideOriginalContent = () => {
+  document.body.style.overflow = 'hidden';
+  Array.from(document.body.children).forEach(child => {
+    if (!child.classList.contains('split-search-container')) {
+      child.dataset.splitSearchHidden = child.style.display;
+      child.style.display = 'none';
+    }
+  });
+};
+
+const showOriginalContent = () => {
+  document.body.style.overflow = '';
+  Array.from(document.body.children).forEach(child => {
+    if (child.dataset.splitSearchHidden !== undefined) {
+      child.style.display = child.dataset.splitSearchHidden;
+      delete child.dataset.splitSearchHidden;
+    }
+  });
+};
+
+const mountSplitPanel = (engines, currentEngineIndex, query) => {
+  injectStyles();
+  document.body.appendChild(createWrapper(engines, currentEngineIndex, query));
+  hideOriginalContent();
+  chrome.storage.sync.set({ splitActive: true });
+};
 
 const restoreOriginalContent = () => {
   const wrapper = document.querySelector('.split-search-container');
-  wrapper && (
-    Array.from(wrapper.querySelector('.split-search-original').childNodes)
-      .forEach(child => document.body.appendChild(child)),
-    wrapper.remove()
-  );
+  if (wrapper) {
+    wrapper.remove();
+    showOriginalContent();
+  }
 };
 
 const closeSplitPanel = () => (
