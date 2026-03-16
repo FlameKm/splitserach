@@ -81,49 +81,6 @@ const createPanel = (engines, currentEngineIndex, query) => {
       createElement('div')({ className: 'split-search-panel', id: 'split-search-panel' }));
 };
 
-const createOriginalFrame = () =>
-  createIframe(window.location.href, 'split-search-original-frame');
-
-const createWrapper = (engines, currentEngineIndex, initialQuery) => {
-  const originalFrame = createOriginalFrame();
-  const panel = createPanel(engines, currentEngineIndex, initialQuery);
-  const rightIframe = panel.querySelector('.split-search-frame');
-  const select = panel.querySelector('select');
-  let currentQuery = initialQuery;
-  let lastLeftUrl = window.location.href;
-
-  // 覆盖 select 的 onchange 事件，使用当前搜索词
-  select.onchange = (e) => {
-    const selectedIndex = parseInt(e.target.value);
-    rightIframe.src = buildSearchUrl(currentQuery)(engines[selectedIndex]);
-  };
-
-  // 轮询检测左侧 iframe URL 变化
-  setInterval(() => {
-    try {
-      const leftUrl = originalFrame.contentWindow.location.href;
-      if (leftUrl !== lastLeftUrl) {
-        lastLeftUrl = leftUrl;
-        const newQuery = extractQueryFromUrl(leftUrl);
-        if (newQuery && newQuery !== currentQuery) {
-          currentQuery = newQuery;
-          // 更新浏览器 URL（不重新加载）
-          history.pushState(null, '', leftUrl);
-          // 更新右侧 iframe
-          const selectedIndex = parseInt(select.value);
-          rightIframe.src = buildSearchUrl(newQuery)(engines[selectedIndex]);
-        }
-      }
-    } catch (e) {
-      // 跨域访问会抛出异常，忽略
-    }
-  }, 100);
-
-  return [originalFrame, panel]
-    .reduce((wrapper, child) => (wrapper.appendChild(child), wrapper),
-      createElement('div')({ className: 'split-search-container' }));
-};
-
 const injectStyles = () =>
   document.head.appendChild(
     createElement('link')({
@@ -133,40 +90,20 @@ const injectStyles = () =>
     })
   );
 
-const isSplitActive = () => !!document.querySelector('.split-search-container');
-
-const hideOriginalContent = () => {
-  document.body.style.overflow = 'hidden';
-  Array.from(document.body.children).forEach(child => {
-    if (!child.classList.contains('split-search-container')) {
-      child.dataset.splitSearchHidden = child.style.display;
-      child.style.display = 'none';
-    }
-  });
-};
-
-const showOriginalContent = () => {
-  document.body.style.overflow = '';
-  Array.from(document.body.children).forEach(child => {
-    if (child.dataset.splitSearchHidden !== undefined) {
-      child.style.display = child.dataset.splitSearchHidden;
-      delete child.dataset.splitSearchHidden;
-    }
-  });
-};
+const isSplitActive = () => !!document.querySelector('.split-search-panel');
 
 const mountSplitPanel = (engines, currentEngineIndex, query) => {
   injectStyles();
-  document.body.appendChild(createWrapper(engines, currentEngineIndex, query));
-  hideOriginalContent();
+  document.body.appendChild(createPanel(engines, currentEngineIndex, query));
+  document.body.classList.add('split-search-active');
   chrome.storage.sync.set({ splitActive: true });
 };
 
 const restoreOriginalContent = () => {
-  const wrapper = document.querySelector('.split-search-container');
-  if (wrapper) {
-    wrapper.remove();
-    showOriginalContent();
+  const panel = document.querySelector('.split-search-panel');
+  if (panel) {
+    panel.remove();
+    document.body.classList.remove('split-search-active');
   }
 };
 

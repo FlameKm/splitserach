@@ -1,27 +1,19 @@
-.split-search-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 999999;
-  background: #fff;
-}
-
-.split-search-original-frame {
-  width: 50%;
-  height: 100%;
-  border: none;
+body.split-search-active {
+  margin-right: 50vw !important;
+  overflow-x: hidden;
 }
 
 .split-search-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
   width: 50%;
   height: 100%;
   border-left: 2px solid #ddd;
   display: flex;
   flex-direction: column;
   background: #fff;
+  z-index: 999999;
 }
 
 .split-search-header {
